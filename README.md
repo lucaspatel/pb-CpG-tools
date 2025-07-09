@@ -6,7 +6,7 @@ reported as both bed and bigwig file outputs. The example below from HG002 shows
 visualize both combined and haplotype-specific methylation probabilities in IGV
 
 <p align="center">
-  <img src="img/HG002_PEG3_pileup_tracks.png"  width="80%" height="80%">
+  <img src="img/HG002_PEG3_pileup_tracks.png" width="80%" />
 </p>
 
 ## Getting started
