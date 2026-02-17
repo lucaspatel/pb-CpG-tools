@@ -104,6 +104,7 @@ fn run(
             hap_tag: settings.hap_tag.as_bytes().try_into().unwrap(),
             pileup_mode: settings.pileup_mode,
             modsites_mode: settings.modsites_mode,
+            mod_code: settings.mod_code.clone(),
             segment_size,
         };
 
@@ -153,8 +154,28 @@ fn run(
 }
 
 fn main() {
-    let settings = cli::parse_settings();
+    let mut settings = cli::parse_settings();
     setup_logger(&settings.output_prefix).unwrap();
+
+    // Non-CpG modification codes require count mode (CNN model is CpG-specific) and all
+    // modsites mode (no dinucleotide context filter)
+    if settings.mod_code != "C+m" {
+        if settings.pileup_mode != MethReadsProcessorPileupMode::count {
+            info!(
+                "Forcing pileup-mode to 'count' for mod-code '{}' (CNN model is CpG-specific)",
+                settings.mod_code
+            );
+            settings.pileup_mode = MethReadsProcessorPileupMode::count;
+        }
+        if settings.modsites_mode != ModSitesMode::all {
+            info!(
+                "Forcing modsites-mode to 'all' for mod-code '{}'",
+                settings.mod_code
+            );
+            settings.modsites_mode = ModSitesMode::all;
+        }
+    }
+
     let derived_settings = cli::validate_and_fix_settings(&settings);
 
     if let Err(err) = run(&settings, &derived_settings) {

@@ -231,6 +231,7 @@ fn get_shared_bed_header(settings: &Settings, derived_settings: &DerivedSettings
 
     header.push(format!("##pileup-mode={}", settings.pileup_mode));
     header.push(format!("##modsites-mode={}", settings.modsites_mode));
+    header.push(format!("##mod-code={}", settings.mod_code));
     header.push(format!("##min-coverage={}", settings.min_coverage));
     header.push(format!("##min-mapq={}", settings.min_mapq));
 

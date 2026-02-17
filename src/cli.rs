@@ -38,6 +38,12 @@ pub struct Settings {
     #[arg(long, value_enum, value_name = "MODE", default_value_t = Default::default())]
     pub modsites_mode: ModSitesMode,
 
+    /// Modification code to process from MM tags (e.g. "C+m" for 5mC, "A+a" for 6mA).
+    /// Both the specified code and its complement strand (e.g. "T-a" for "A+a") are
+    /// automatically processed.
+    #[arg(long, value_name = "CODE", default_value = "C+m")]
+    pub mod_code: String,
+
     /// Genome reference in FASTA format. This is required if either (1) 'reference' modsite
     /// mode is selected or (2) input alignments are in CRAM format
     #[arg(long = "ref", value_name = "FILE")]
@@ -166,6 +172,29 @@ fn validate_and_fix_settings_impl(settings: &Settings) -> SimpleResult<DerivedSe
 
     if settings.hap_tag.len() != 2 {
         bail!("SAM haplotype tag must have a length of 2");
+    }
+
+    // Validate mod_code format
+    if settings.mod_code.len() < 3 {
+        bail!(
+            "--mod-code value '{}' is too short. Expected format like 'C+m' or 'A+a'",
+            settings.mod_code
+        );
+    }
+    {
+        let mc_bytes = settings.mod_code.as_bytes();
+        if !b"ACGTN".contains(&mc_bytes[0]) {
+            bail!(
+                "--mod-code first character '{}' must be one of A, C, G, T, N",
+                mc_bytes[0] as char
+            );
+        }
+        if mc_bytes[1] != b'+' && mc_bytes[1] != b'-' {
+            bail!(
+                "--mod-code second character '{}' must be '+' or '-'",
+                mc_bytes[1] as char
+            );
+        }
     }
 
     let thread_count = match settings.thread_count_option {

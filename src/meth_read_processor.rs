@@ -5,7 +5,7 @@ use clap::ValueEnum;
 use error_stack::{Context, Report, ResultExt};
 use rust_htslib::bam;
 use rust_vc_utils::aux::get_optional_int_aux_tag;
-use rust_vc_utils::basemod::{decode_cpg_meth_info, CpgMethInfo};
+use rust_vc_utils::basemod::{decode_cpg_meth_info, decode_mod_info_both_strands, CpgMethInfo};
 use rust_vc_utils::get_complete_read_to_ref_pos_map;
 use rust_vc_utils::RingBuffer;
 use serde_derive::{Deserialize, Serialize};
@@ -833,6 +833,9 @@ impl<'a> PostPileupData<'a> {
                 }
                 total_col = meth_prob_pileup_column.get_hap_total();
             }
+            ModSitesMode::all => {
+                total_col = meth_prob_pileup_column.get_hap_total();
+            }
         };
 
         match self.pileup_mode {
@@ -1016,6 +1019,9 @@ pub enum ModSitesMode {
 
     /// Pick sites where "CG" is present in the reference sequence
     reference,
+
+    /// Report every modified position with no dinucleotide context filter
+    all,
 }
 
 #[derive(Clone)]
@@ -1033,6 +1039,9 @@ pub struct MethReadsProcessorOptions {
     pub pileup_mode: MethReadsProcessorPileupMode,
 
     pub modsites_mode: ModSitesMode,
+
+    /// Modification code to process from MM tags (e.g. "C+m", "A+a")
+    pub mod_code: String,
 
     /// This defines how large of a chromosome segment should be processed by a single thread
     pub segment_size: u64,
@@ -1240,8 +1249,16 @@ impl<'a> MethReadsProcessor<'a> {
             return Ok(false);
         }
 
-        // Get CpG methylation info for this read
-        let cpg_meth_info = decode_cpg_meth_info(record);
+        // Get methylation info for this read
+        //
+        // C+m always uses the CpG-specific decoder, which applies the reverse-strand position
+        // shift to merge both strands onto the forward-strand C of each CpG. The generic decoder
+        // is used for all other modification types.
+        let cpg_meth_info = if self.client_options.mod_code == "C+m" {
+            decode_cpg_meth_info(record)
+        } else {
+            decode_mod_info_both_strands(record, &self.client_options.mod_code)
+        };
 
         // For compatibility with python script, skip further processing if MM or ML tag doesn't
         // exist on read:
